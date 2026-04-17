@@ -1,0 +1,10 @@
+.DS_Store
+.claude/
+CLAUDE.md
+AGENTS.md
+.env
+.env.*
+node_modules/
+dist/
+.vscode/
+.idea/

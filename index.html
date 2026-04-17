@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Lisan لسان — Arabic-first local dictation for macOS</title>
+<meta name="description" content="إملاء صوتي عربي/إنجليزي يعمل محلياً على ماك. يعتمد على Whisper وGPU ميتال. لا يرسل صوتك لأي خادم. مفتوح المصدر.">
+<meta property="og:title" content="Lisan لسان">
+<meta property="og:description" content="Arabic-first local dictation for macOS. Whisper + Metal GPU. Your voice never leaves your Mac. Open source.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ar_SA">
+<meta name="theme-color" content="#0a0a0e">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --void: #050507;
+    --surface: #0a0a0e;
+    --surface-2: #0f0f14;
+    --accent: #7dd3fc;
+    --accent-dim: #38bdf8;
+    --accent-glow: rgba(125, 211, 252, 0.15);
+    --accent-faint: rgba(125, 211, 252, 0.04);
+    --text: #c8c8c8;
+    --text-dim: #555;
+    --text-dimmer: #333;
+    --mono: 'JetBrains Mono', monospace;
+    --arabic: 'Noto Kufi Arabic', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    background: var(--void);
+    color: var(--text);
+    font-family: var(--arabic);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(125,211,252,0.008) 2px, rgba(125,211,252,0.008) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .glow {
+    position: fixed;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    top: 40%; left: 50%;
+    transform: translate(-50%, -55%);
+    pointer-events: none;
+    animation: breathe 6s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.4; transform: translate(-50%, -55%) scale(1); }
+    50% { opacity: 0.7; transform: translate(-50%, -55%) scale(1.05); }
+  }
+
+  /* === HERO === */
+  .hero {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 10;
+    padding: 40px 20px;
+  }
+
+  .brand {
+    display: flex; align-items: baseline; gap: 14px;
+    margin-bottom: 10px;
+    animation: fadeDown 1s ease-out both;
+    direction: ltr;
+  }
+
+  .brand-letter {
+    font-family: var(--arabic);
+    font-size: 48px; font-weight: 800;
+    color: var(--accent); line-height: 1;
+    text-shadow: 0 0 40px var(--accent-glow), 0 0 80px rgba(125,211,252,0.08);
+    animation: pulse-letter 4s ease-in-out infinite;
+  }
+
+  @keyframes pulse-letter {
+    0%, 100% { opacity: 1; text-shadow: 0 0 40px var(--accent-glow); }
+    50% { opacity: 0.85; text-shadow: 0 0 60px var(--accent-glow), 0 0 100px rgba(125,211,252,0.1); }
+  }
+
+  .brand-name {
+    font-family: var(--mono);
+    font-size: 15px; font-weight: 300;
+    letter-spacing: 8px; text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .tagline {
+    font-family: var(--mono);
+    font-size: 13px; font-weight: 400;
+    color: var(--text-dim); letter-spacing: 1px;
+    margin-bottom: 6px; text-align: center;
+    direction: ltr;
+    animation: fadeDown 1s ease-out 0.15s both;
+  }
+
+  .tagline-ar {
+    font-family: var(--arabic);
+    font-size: 13px; color: var(--text-dim);
+    margin-bottom: 36px; text-align: center;
+    animation: fadeDown 1s ease-out 0.2s both;
+  }
+
+  /* Dictation mock */
+  .dictation {
+    width: min(620px, 92vw);
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(125,211,252,0.03), 0 20px 60px rgba(0,0,0,0.6), 0 0 120px rgba(125,211,252,0.03);
+    animation: floatUp 1s ease-out 0.3s both;
+    direction: ltr;
+  }
+
+  .dictation-bar {
+    display: flex; align-items: center; gap: 7px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #28c840; }
+
+  .dictation-status {
+    display: flex; align-items: center; gap: 8px;
+    margin-left: 14px; font-family: var(--mono);
+    font-size: 10px; color: var(--accent-dim);
+    letter-spacing: 1px;
+  }
+
+  .rec-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse-rec 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-rec {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  .lang-pill {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9px; padding: 2px 8px;
+    border-radius: 100px;
+    color: var(--accent-dim);
+    background: var(--accent-faint);
+    border: 1px solid rgba(125,211,252,0.15);
+    letter-spacing: 0.5px;
+  }
+
+  /* Waveform */
+  .waveform {
+    height: 56px;
+    padding: 0 22px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    overflow: hidden;
+  }
+
+  .wave-bar {
+    flex: 1;
+    background: var(--accent-dim);
+    border-radius: 2px;
+    opacity: 0.6;
+    animation: wave 1.4s ease-in-out infinite;
+    max-width: 4px;
+  }
+
+  @keyframes wave {
+    0%, 100% { height: 10%; opacity: 0.3; }
+    50% { height: 70%; opacity: 0.9; }
+  }
+
+  .dictation-body {
+    padding: 22px 24px 26px;
+    font-size: 14px; line-height: 1.9;
+    min-height: 180px;
+  }
+
+  .line { display: block; margin-bottom: 6px; }
+  .line-meta {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-dimmer); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 4px;
+    display: block;
+  }
+
+  .transcript-en {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    color: var(--text);
+    direction: ltr; text-align: left;
+    display: block;
+  }
+
+  .transcript-ar {
+    font-family: var(--arabic);
+    font-size: 16px;
+    color: var(--text);
+    direction: rtl; text-align: right;
+    display: block;
+  }
+
+  .cursor-block {
+    display: inline-block; width: 8px; height: 16px;
+    background: var(--accent); vertical-align: text-bottom;
+    margin-right: 3px;
+    animation: blink 1.2s step-end infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .stat {
+    margin-top: 28px; font-size: 12px;
+    color: #444; letter-spacing: 0.5px;
+    animation: fadeDown 1s ease-out 0.5s both;
+    text-align: center; padding: 0 16px;
+    font-family: var(--mono);
+    direction: ltr;
+  }
+  .stat em { font-style: normal; color: var(--accent-dim); }
+
+  .pills {
+    display: flex; gap: 8px; margin-top: 20px;
+    animation: fadeDown 1s ease-out 0.6s both;
+    flex-wrap: wrap; justify-content: center;
+    padding: 0 16px;
+    direction: ltr;
+  }
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 10px; font-weight: 500; letter-spacing: 0.8px;
+    padding: 4px 12px;
+    border: 1px solid rgba(125,211,252,0.12); border-radius: 100px;
+    color: var(--accent-dim); background: var(--accent-faint);
+    white-space: nowrap;
+  }
+
+  /* CTA */
+  .cta-row {
+    display: flex; gap: 12px; margin-top: 32px;
+    animation: fadeDown 1s ease-out 0.75s both;
+    flex-wrap: wrap; justify-content: center;
+    padding: 0 16px;
+    direction: ltr;
+  }
+
+  .cta-primary {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 32px;
+    background: var(--accent); color: var(--void);
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    letter-spacing: 1px; text-decoration: none;
+    border-radius: 6px; transition: all 0.2s;
+    box-shadow: 0 0 30px rgba(125,211,252,0.2);
+    white-space: nowrap;
+  }
+
+  .cta-primary:hover {
+    background: #a5e4fc;
+    box-shadow: 0 0 50px rgba(125,211,252,0.4);
+    transform: translateY(-1px);
+  }
+
+  .cta-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    background: transparent; color: var(--accent-dim);
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    letter-spacing: 1px; text-decoration: none;
+    border-radius: 6px; border: 1px solid rgba(125,211,252,0.2);
+    transition: all 0.2s; white-space: nowrap;
+  }
+
+  .cta-secondary:hover {
+    border-color: rgba(125,211,252,0.5);
+    background: rgba(125,211,252,0.04);
+  }
+
+  .cta-sub {
+    margin-top: 12px;
+    font-family: var(--arabic); font-size: 12px;
+    color: #333; direction: rtl; text-align: center;
+    animation: fadeDown 1s ease-out 0.9s both;
+  }
+
+  .version-tag {
+    margin-top: 8px; font-size: 10px;
+    color: #333; letter-spacing: 1px;
+    font-family: var(--mono); direction: ltr; text-align: center;
+  }
+
+  /* === FEATURES === */
+  .features {
+    width: 100%; max-width: 960px;
+    margin: 0 auto; padding: 80px 20px 60px;
+    position: relative; z-index: 10;
+  }
+
+  .features-title {
+    font-family: var(--mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 4px; text-transform: uppercase;
+    color: var(--accent-dim); text-align: center;
+    margin-bottom: 8px;
+    direction: ltr;
+  }
+
+  .features-title-ar {
+    font-family: var(--arabic);
+    font-size: 12px; color: var(--text-dim);
+    text-align: center; margin-bottom: 48px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 8px; overflow: hidden;
+  }
+
+  .feature {
+    padding: 28px 24px; background: var(--surface);
+  }
+
+  .feature-icon {
+    font-size: 18px; margin-bottom: 12px; display: block;
+    color: var(--accent-dim); opacity: 0.75;
+    font-family: var(--arabic);
+  }
+
+  .feature-name {
+    font-family: var(--mono);
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.5px; color: #ddd; margin-bottom: 6px;
+    direction: ltr;
+  }
+
+  .feature-name-ar {
+    font-family: var(--arabic);
+    font-size: 11px;
+    color: var(--text-dim); margin-bottom: 8px;
+  }
+
+  .feature-desc {
+    font-size: 12px; color: #666; line-height: 1.7;
+  }
+
+  /* === HOW === */
+  .how {
+    width: 100%; max-width: 960px;
+    margin: 0 auto; padding: 40px 20px 80px;
+    position: relative; z-index: 10;
+  }
+
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .how-step {
+    padding: 24px 22px;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .how-num {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--accent-dim);
+    letter-spacing: 2px; display: block;
+    margin-bottom: 10px; direction: ltr;
+  }
+
+  .how-title {
+    font-family: var(--arabic);
+    font-size: 14px; font-weight: 700;
+    color: #ddd; margin-bottom: 8px;
+  }
+
+  .how-desc {
+    font-size: 12px; color: #666; line-height: 1.7;
+  }
+
+  /* === PRIVACY STRIP === */
+  .privacy {
+    width: 100%; max-width: 720px;
+    margin: 0 auto 80px; padding: 0 20px;
+    position: relative; z-index: 10;
+    text-align: center;
+  }
+
+  .privacy-box {
+    border: 1px solid rgba(125,211,252,0.1);
+    background: linear-gradient(180deg, rgba(125,211,252,0.02), transparent);
+    border-radius: 8px;
+    padding: 32px 28px;
+  }
+
+  .privacy-label {
+    font-family: var(--mono);
+    font-size: 10px; color: var(--accent-dim);
+    letter-spacing: 3px; text-transform: uppercase;
+    margin-bottom: 14px; direction: ltr;
+  }
+
+  .privacy-headline {
+    font-family: var(--arabic);
+    font-size: 20px; font-weight: 700;
+    color: #ddd; margin-bottom: 8px; line-height: 1.5;
+  }
+
+  .privacy-sub {
+    font-family: var(--mono);
+    font-size: 12px; color: var(--text-dim);
+    letter-spacing: 0.5px; direction: ltr;
+  }
+
+  /* === FOOTER === */
+  .footer {
+    width: 100%; padding: 40px 20px;
+    text-align: center;
+    border-top: 1px solid rgba(255,255,255,0.03);
+    position: relative; z-index: 10;
+  }
+
+  .footer-text {
+    font-family: var(--mono);
+    font-size: 10px; color: #333; letter-spacing: 1px;
+    direction: ltr;
+  }
+
+  .footer-arabic {
+    font-family: var(--arabic); font-size: 11px;
+    color: #282828; margin-top: 6px; direction: rtl;
+  }
+
+  .footer-links {
+    display: flex; gap: 18px;
+    justify-content: center; margin-top: 14px;
+    direction: ltr;
+  }
+
+  .footer-links a {
+    font-family: var(--mono);
+    font-size: 10px; color: var(--text-dim);
+    letter-spacing: 1px; text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--accent-dim); }
+
+  /* Animations */
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes floatUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+
+  /* Corner markers */
+  .corner { position: fixed; pointer-events: none; z-index: 5; }
+  .corner-tl { top: 24px; left: 24px; }
+  .corner-br { bottom: 24px; right: 24px; }
+  .corner span {
+    display: block; font-size: 9px; letter-spacing: 2px;
+    color: #222; font-family: var(--mono); direction: ltr;
+  }
+  .corner-br span { text-align: right; font-family: var(--arabic); letter-spacing: 0; }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 900px) {
+    .features-grid { grid-template-columns: repeat(2, 1fr); }
+    .how-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .brand-letter { font-size: 40px; }
+    .brand-name { font-size: 13px; letter-spacing: 6px; }
+    .corner { display: none; }
+  }
+
+  @media (max-width: 480px) {
+    .hero { padding: 24px 12px; min-height: auto; padding-top: 60px; padding-bottom: 40px; }
+    .dictation-body { font-size: 12px; padding: 16px 16px 20px; line-height: 1.7; min-height: 140px; }
+    .brand { gap: 10px; margin-bottom: 8px; }
+    .brand-letter { font-size: 32px; }
+    .brand-name { font-size: 10px; letter-spacing: 4px; }
+    .tagline { font-size: 11px; margin-bottom: 4px; }
+    .tagline-ar { font-size: 11px; margin-bottom: 20px; }
+    .transcript-en { font-size: 12px; }
+    .transcript-ar { font-size: 14px; }
+    .line-meta { font-size: 9px; }
+    .waveform { height: 44px; padding: 0 16px; }
+    .stat { font-size: 10px; margin-top: 16px; line-height: 1.6; }
+    .pills { gap: 5px; margin-top: 12px; }
+    .pill { font-size: 9px; padding: 3px 8px; }
+    .cta-row { flex-direction: column; align-items: center; margin-top: 20px; gap: 10px; }
+    .cta-primary { width: 100%; max-width: 280px; justify-content: center; padding: 12px 20px; font-size: 12px; }
+    .cta-secondary { width: 100%; max-width: 280px; justify-content: center; padding: 10px 16px; font-size: 11px; }
+    .cta-sub { font-size: 10px; }
+    .version-tag { font-size: 9px; }
+    .glow { width: 250px; height: 250px; }
+    .features { padding: 48px 12px 40px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .features-title { margin-bottom: 4px; font-size: 10px; }
+    .features-title-ar { margin-bottom: 24px; font-size: 11px; }
+    .feature { padding: 22px 20px; }
+    .how { padding: 20px 12px 60px; }
+    .how-step { padding: 20px 18px; }
+    .privacy { margin-bottom: 60px; }
+    .privacy-box { padding: 24px 20px; }
+    .privacy-headline { font-size: 16px; }
+    .privacy-sub { font-size: 10px; }
+    .dictation-bar { padding: 10px 12px; }
+    .dictation-status { margin-left: 10px; font-size: 9px; }
+    .lang-pill { font-size: 8px; padding: 2px 6px; }
+    .dot { width: 9px; height: 9px; }
+  }
+
+  @media (max-width: 375px) {
+    .hero { padding-top: 40px; }
+    .brand-letter { font-size: 28px; }
+    .brand-name { font-size: 9px; letter-spacing: 3px; }
+    .tagline, .tagline-ar { font-size: 10px; }
+    .dictation-body { font-size: 11px; padding: 14px 14px 16px; }
+  }
+
+  @media (max-height: 500px) and (orientation: landscape) {
+    .hero { min-height: auto; padding: 20px 16px; }
+    .glow { display: none; }
+    .stat { margin-top: 12px; }
+    .pills { margin-top: 8px; }
+    .cta-row { margin-top: 12px; }
+  }
+
+  @supports (padding: env(safe-area-inset-top)) {
+    .hero {
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-right: max(12px, env(safe-area-inset-right));
+    }
+    .features, .how, .privacy {
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-right: max(12px, env(safe-area-inset-right));
+    }
+    .footer { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow"></div>
+
+<div class="corner corner-tl"><span>v0.1.0</span></div>
+<div class="corner corner-br"><span>مفتوح المصدر</span></div>
+
+<section class="hero">
+
+  <div class="brand">
+    <span class="brand-letter">ل</span>
+    <span class="brand-name">Lisan</span>
+  </div>
+
+  <div class="tagline">Arabic-first local dictation for macOS</div>
+  <div class="tagline-ar">إملاء صوتي عربي، يعمل على جهازك — بدون إنترنت</div>
+
+  <div class="dictation">
+    <div class="dictation-bar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <div class="dictation-status">
+        <span class="rec-dot"></span>
+        <span>RECORDING</span>
+      </div>
+      <div class="lang-pill">AR · EN · AUTO</div>
+    </div>
+
+    <div class="waveform">
+      <div class="wave-bar" style="animation-delay:0s"></div>
+      <div class="wave-bar" style="animation-delay:0.08s"></div>
+      <div class="wave-bar" style="animation-delay:0.16s"></div>
+      <div class="wave-bar" style="animation-delay:0.24s"></div>
+      <div class="wave-bar" style="animation-delay:0.32s"></div>
+      <div class="wave-bar" style="animation-delay:0.4s"></div>
+      <div class="wave-bar" style="animation-delay:0.48s"></div>
+      <div class="wave-bar" style="animation-delay:0.56s"></div>
+      <div class="wave-bar" style="animation-delay:0.64s"></div>
+      <div class="wave-bar" style="animation-delay:0.72s"></div>
+      <div class="wave-bar" style="animation-delay:0.6s"></div>
+      <div class="wave-bar" style="animation-delay:0.52s"></div>
+      <div class="wave-bar" style="animation-delay:0.44s"></div>
+      <div class="wave-bar" style="animation-delay:0.36s"></div>
+      <div class="wave-bar" style="animation-delay:0.28s"></div>
+      <div class="wave-bar" style="animation-delay:0.2s"></div>
+      <div class="wave-bar" style="animation-delay:0.12s"></div>
+      <div class="wave-bar" style="animation-delay:0.04s"></div>
+      <div class="wave-bar" style="animation-delay:0s"></div>
+      <div class="wave-bar" style="animation-delay:0.1s"></div>
+      <div class="wave-bar" style="animation-delay:0.2s"></div>
+      <div class="wave-bar" style="animation-delay:0.3s"></div>
+      <div class="wave-bar" style="animation-delay:0.4s"></div>
+      <div class="wave-bar" style="animation-delay:0.5s"></div>
+      <div class="wave-bar" style="animation-delay:0.6s"></div>
+      <div class="wave-bar" style="animation-delay:0.7s"></div>
+      <div class="wave-bar" style="animation-delay:0.8s"></div>
+      <div class="wave-bar" style="animation-delay:0.9s"></div>
+      <div class="wave-bar" style="animation-delay:1s"></div>
+      <div class="wave-bar" style="animation-delay:1.1s"></div>
+    </div>
+
+    <div class="dictation-body">
+      <span class="line-meta">· EN · 0.8s</span>
+      <span class="transcript-en line">Ship the new Arabic dictation build to the team by tomorrow.</span>
+      <span class="line-meta">· AR · 0.6s</span>
+      <span class="transcript-ar line">اكتب للفريق إن لسان جاهز وبدون ما يخرج الصوت من الجهاز<span class="cursor-block"></span></span>
+    </div>
+  </div>
+
+  <div class="stat">
+    <em>whisper.cpp</em> · Metal GPU · <em>419ms decode</em> on JFK · 105/105 tests
+  </div>
+
+  <div class="pills">
+    <span class="pill">Arabic + English</span>
+    <span class="pill">Runs Locally</span>
+    <span class="pill">Whisper.cpp</span>
+    <span class="pill">Metal GPU</span>
+    <span class="pill">Vocabulary Bias</span>
+    <span class="pill">Press-to-Talk</span>
+    <span class="pill">Open Source</span>
+  </div>
+
+  <div class="cta-row">
+    <a class="cta-primary" href="https://github.com/Moshe-ship/Lisan/releases">
+      Download v0.1.0 ↓
+    </a>
+    <a class="cta-secondary" href="https://github.com/Moshe-ship/Lisan">
+      View Source →
+    </a>
+  </div>
+
+  <div class="cta-sub">حمّل مجاناً — مفتوح المصدر برخصة MIT</div>
+  <div class="version-tag">macOS 14+ · Apple Silicon · MIT License</div>
+
+</section>
+
+<section class="features">
+
+  <div class="features-title">What's inside</div>
+  <div class="features-title-ar">ما في داخل لسان</div>
+
+  <div class="features-grid">
+    <div class="feature">
+      <div class="feature-icon">ع</div>
+      <div class="feature-name">Arabic-First</div>
+      <div class="feature-name-ar">عربي أولاً</div>
+      <div class="feature-desc">Explicit Arabic mode (-l ar) and bilingual auto-detect. Normalizes ar-EG, ar-SA, العربية — all 99 Whisper languages supported.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">◆</div>
+      <div class="feature-name">Runs Locally</div>
+      <div class="feature-name-ar">يعمل على جهازك</div>
+      <div class="feature-desc">whisper.cpp with Metal GPU on Apple Silicon. Your voice never touches a server — no cloud, no API keys, no telemetry.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">⬡</div>
+      <div class="feature-name">Press-to-Talk</div>
+      <div class="feature-name-ar">اضغط وتكلّم</div>
+      <div class="feature-desc">Hold a hotkey, speak, release. Transcript is typed directly where your cursor is — Slack, Xcode, Messages, anywhere.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">⌘</div>
+      <div class="feature-name">Vocabulary Bias</div>
+      <div class="feature-name-ar">قاموسك الخاص</div>
+      <div class="feature-desc">Drop a plain-text file with your proper nouns, product names, Arabic dialect words. Passed as --prompt to whisper for context.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">◫</div>
+      <div class="feature-name">Three Insertion Modes</div>
+      <div class="feature-name-ar">ثلاث طرق للإدراج</div>
+      <div class="feature-desc">CGEvent typing, Accessibility value patching, or clipboard-paste for terminals. Automatic fallback — works in every app.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">⊙</div>
+      <div class="feature-name">Smart Cleanup</div>
+      <div class="feature-name-ar">تنظيف ذكي</div>
+      <div class="feature-desc">Rule-based cleanup engine removes filler words, fixes spacing, and applies your personal lexicon corrections (word-boundary regex).</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">◑</div>
+      <div class="feature-name">Language Modes</div>
+      <div class="feature-name-ar">أوضاع اللغة</div>
+      <div class="feature-desc">Pick EN for English, AR for Arabic, or AUTO to let Whisper detect. Switch per-session — no app restart required.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">♯</div>
+      <div class="feature-name">Two Model Sizes</div>
+      <div class="feature-name-ar">نموذجان للاختيار</div>
+      <div class="feature-desc">ggml-base (fast, ~150MB) or ggml-small (accurate, ~500MB). Both multilingual. Ship small for Arabic quality.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">⌥</div>
+      <div class="feature-name">Zero Subscription</div>
+      <div class="feature-name-ar">بدون اشتراك</div>
+      <div class="feature-desc">MIT licensed. No account. No usage caps. Fork it, ship it, modify the Whisper prompt. It's yours.</div>
+    </div>
+  </div>
+
+</section>
+
+<section class="how">
+
+  <div class="features-title">How it works</div>
+  <div class="features-title-ar">كيف يعمل</div>
+
+  <div class="how-grid">
+    <div class="how-step">
+      <span class="how-num">01 · CAPTURE</span>
+      <div class="how-title">التقاط الصوت</div>
+      <div class="how-desc">Hold the hotkey. AVAudioEngine records into an .m4a file. Release to stop. No audio leaves the RAM of your Mac.</div>
+    </div>
+    <div class="how-step">
+      <span class="how-num">02 · TRANSCRIBE</span>
+      <div class="how-title">النسخ محلياً</div>
+      <div class="how-desc">whisper-cli runs on Metal GPU. Your language mode becomes the -l flag. Your vocabulary file becomes --prompt for biasing.</div>
+    </div>
+    <div class="how-step">
+      <span class="how-num">03 · INSERT</span>
+      <div class="how-title">الإدراج الذكي</div>
+      <div class="how-desc">Cleanup engine polishes the text. InsertionService picks the best transport for your frontmost app and types directly.</div>
+    </div>
+  </div>
+
+</section>
+
+<section class="privacy">
+  <div class="privacy-box">
+    <div class="privacy-label">Privacy · خصوصية</div>
+    <div class="privacy-headline">صوتك لا يغادر جهازك. أبداً.</div>
+    <div class="privacy-sub">Your voice never leaves your Mac. No server. No telemetry. No API key. Fully offline.</div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-text">LISAN v0.1.0 · MIT LICENSE · FORKED FROM STENO · BUILT ON WHISPER.CPP</div>
+  <div class="footer-arabic">صُنع بحب للمتكلّمين بالعربية — شكراً لمجتمع AI Saudi</div>
+  <div class="footer-links">
+    <a href="https://github.com/Moshe-ship/Lisan">GitHub</a>
+    <a href="https://github.com/Moshe-ship/Lisan/releases">Releases</a>
+    <a href="https://github.com/Moshe-ship/Lisan#readme">Docs</a>
+    <a href="https://github.com/Ankit-Cherian/steno">Upstream</a>
+  </div>
+</footer>
+
+</body>
+</html>
