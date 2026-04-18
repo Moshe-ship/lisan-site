@@ -581,7 +581,7 @@
 
 <div class="glow"></div>
 
-<div class="corner corner-tl"><span>v0.3.18</span></div>
+<div class="corner corner-tl"><span>v0.3.18 · PUBLIC BETA</span></div>
 <div class="corner corner-br"><span>مفتوح المصدر</span></div>
 
 <section class="hero">
@@ -640,38 +640,39 @@
     </div>
 
     <div class="dictation-body">
-      <span class="line-meta">· EN · 0.8s</span>
-      <span class="transcript-en line">Ship the new Arabic dictation build to the team by tomorrow.</span>
       <span class="line-meta">· AR · 0.6s</span>
-      <span class="transcript-ar line">اكتب للفريق إن لسان جاهز وبدون ما يخرج الصوت من الجهاز<span class="cursor-block"></span></span>
+      <span class="transcript-ar line">اكتب للفريق إن لسان جاهز وبدون ما يخرج الصوت من الجهاز</span>
+      <span class="line-meta">· EN · 0.8s</span>
+      <span class="transcript-en line">Ship the new Arabic dictation build to the team by tomorrow.<span class="cursor-block"></span></span>
     </div>
   </div>
 
   <div class="stat">
-    <em>whisper.cpp</em> · Metal GPU · <em>~585ms p50</em> on JFK · 198/198 tests · Notarized
+    <em>whisper.cpp</em> · Metal GPU · 239/239 tests · Notarized · <em>eval WERs forthcoming from public Arabic eval</em>
   </div>
 
   <div class="pills">
-    <span class="pill">Arabic + English</span>
+    <span class="pill">Arabic-First</span>
+    <span class="pill">Public Beta</span>
     <span class="pill">Runs Locally</span>
     <span class="pill">Whisper.cpp</span>
     <span class="pill">Metal GPU</span>
-    <span class="pill">Vocabulary Bias</span>
-    <span class="pill">Press-to-Talk</span>
+    <span class="pill">10 Dialect Packs</span>
+    <span class="pill">Correction Memory</span>
     <span class="pill">Open Source</span>
   </div>
 
   <div class="cta-row">
     <a class="cta-primary" href="https://github.com/Moshe-ship/Lisan/releases">
-      Download v0.3.18 ↓
+      Try Beta v0.3.18 ↓
     </a>
     <a class="cta-secondary" href="https://github.com/Moshe-ship/Lisan">
       View Source →
     </a>
   </div>
 
-  <div class="cta-sub">حمّل مجاناً — مفتوح المصدر برخصة MIT</div>
-  <div class="version-tag">macOS 14+ · Apple Silicon · MIT License</div>
+  <div class="cta-sub">جرّب البيتا — مفتوح المصدر برخصة MIT · ما زال يتحسن</div>
+  <div class="version-tag">macOS 14+ · Apple Silicon · MIT License · Public Beta</div>
 
 </section>
 
@@ -704,44 +705,65 @@
 
     <div class="feature">
       <div class="feature-icon">⌘</div>
-      <div class="feature-name">Vocabulary Bias</div>
-      <div class="feature-name-ar">قاموسك الخاص</div>
-      <div class="feature-desc">Drop a plain-text file with your proper nouns, product names, Arabic dialect words. Passed as --prompt to whisper for context.</div>
+      <div class="feature-name">10 Bundled Dialect Packs</div>
+      <div class="feature-name-ar">١٠ حزم لهجات جاهزة</div>
+      <div class="feature-desc">Khaleeji, Shami, Saudi places, Saudi government, medical Arabic, tech bilingual, MSA business, GCC brands, agency, Islamic terms. Multi-select with priority ordering — packs are fed to whisper as decoder bias, not find-and-replace.</div>
     </div>
 
     <div class="feature">
       <div class="feature-icon">◫</div>
-      <div class="feature-name">Three Insertion Modes</div>
-      <div class="feature-name-ar">ثلاث طرق للإدراج</div>
-      <div class="feature-desc">CGEvent typing, Accessibility value patching, or clipboard-paste for terminals. Automatic fallback — works in every app.</div>
+      <div class="feature-name">Correction Memory</div>
+      <div class="feature-name-ar">ذاكرة التصحيح</div>
+      <div class="feature-desc">Correct a transcript once, and Lisan learns. Right-click any history entry → edit what it should have said → proposed word substitutions get saved to your personal lexicon, app-scoped or global, and bias every future dictation.</div>
     </div>
 
     <div class="feature">
       <div class="feature-icon">⊙</div>
-      <div class="feature-name">Smart Cleanup</div>
-      <div class="feature-name-ar">تنظيف ذكي</div>
-      <div class="feature-desc">Rule-based cleanup engine removes filler words, fixes spacing, and applies your personal lexicon corrections (word-boundary regex).</div>
+      <div class="feature-name">Bilingual Cleanup</div>
+      <div class="feature-name-ar">تنظيف ثنائي اللغة</div>
+      <div class="feature-desc">Arabic chunks run through a dedicated normalizer + punctuator (harakat, tatweel, alef/yeh variants, Arabic comma/question mark). English chunks use a rule-based cleanup. No LLM in the loop — fully local, rule-governed.</div>
     </div>
 
     <div class="feature">
       <div class="feature-icon">◑</div>
-      <div class="feature-name">Language Modes</div>
-      <div class="feature-name-ar">أوضاع اللغة</div>
-      <div class="feature-desc">Pick EN for English, AR for Arabic, or AUTO to let Whisper detect. Switch per-session — no app restart required.</div>
+      <div class="feature-name">Two-Pass + Segmented Auto</div>
+      <div class="feature-name-ar">كشف لغة دقيق ومقسّم</div>
+      <div class="feature-desc">Auto mode adds opt-in `-dl` preflight to fix whisper's English bias on short Arabic clips. Segmented mode splits long recordings on silence and detects language per segment — the closest honest thing to phrase-level code-switch (whisper.cpp does not code-switch word-by-word).</div>
     </div>
 
     <div class="feature">
       <div class="feature-icon">♯</div>
-      <div class="feature-name">Two Model Sizes</div>
-      <div class="feature-name-ar">نموذجان للاختيار</div>
-      <div class="feature-desc">ggml-base (fast, ~150MB) or ggml-small (accurate, ~500MB). Both multilingual. Ship small for Arabic quality.</div>
+      <div class="feature-name">Four Model Sizes</div>
+      <div class="feature-name-ar">أربعة نماذج للاختيار</div>
+      <div class="feature-desc">Tiny (74MB) · Base (141MB) · Small (465MB, recommended for Arabic) · Medium (1.5GB). Downloaded on demand from the in-app Model picker, size-verified, stored locally. Switch any time.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">⬢</div>
+      <div class="feature-name">App-Specific Profiles</div>
+      <div class="feature-name-ar">ملفات لكل تطبيق</div>
+      <div class="feature-desc">Terminal / iTerm / VS Code / Claude / ChatGPT → passthrough (dictated text goes in raw). Notes / Obsidian → long-form structure. Messages / WhatsApp / Telegram → chat tone. Sensible defaults, fully overridable.</div>
     </div>
 
     <div class="feature">
       <div class="feature-icon">⌥</div>
-      <div class="feature-name">Zero Subscription</div>
-      <div class="feature-name-ar">بدون اشتراك</div>
-      <div class="feature-desc">MIT licensed. No account. No usage caps. Fork it, ship it, modify the Whisper prompt. It's yours.</div>
+      <div class="feature-name">Local History, You Control</div>
+      <div class="feature-name-ar">سجل محلي تتحكم به</div>
+      <div class="feature-desc">Raw + cleaned transcripts kept in a 0600 owner-only file, excluded from iCloud/Time Machine backup. Retention window is user-configurable; tightening it prunes old entries immediately on disk. Toggle the whole thing off for session-only memory.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">❖</div>
+      <div class="feature-name">Press-to-Talk, Anywhere</div>
+      <div class="feature-name-ar">اضغط وتكلّم — في أي تطبيق</div>
+      <div class="feature-desc">Hold Option, speak, release. CGEvent typing for most apps, Accessibility for native fields, clipboard-paste for terminals — automatic fallback picks what actually works per bundle ID.</div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">○</div>
+      <div class="feature-name">Zero Subscription, MIT</div>
+      <div class="feature-name-ar">بدون اشتراك · رخصة MIT</div>
+      <div class="feature-desc">No account, no usage caps, no telemetry, no opt-out because there's nothing to opt out of. Fork it, port it, modify it. The only outbound HTTP is the model download to Hugging Face when you click Download.</div>
     </div>
   </div>
 
@@ -756,17 +778,17 @@
     <div class="how-step">
       <span class="how-num">01 · CAPTURE</span>
       <div class="how-title">التقاط الصوت</div>
-      <div class="how-desc">Hold the hotkey. AVAudioEngine records into an .m4a file. Release to stop. No audio leaves the RAM of your Mac.</div>
+      <div class="how-desc">Hold Option, speak, release. AVAudioRecorder writes a local WAV to a temp path. Nothing is buffered beyond the recording — no streaming, no cloud, no upload.</div>
     </div>
     <div class="how-step">
       <span class="how-num">02 · TRANSCRIBE</span>
       <div class="how-title">النسخ محلياً</div>
-      <div class="how-desc">whisper-cli runs on Metal GPU. Your language mode becomes the -l flag. Your vocabulary file becomes --prompt for biasing.</div>
+      <div class="how-desc">whisper-cli runs on Metal GPU with your chosen model (Tiny → Medium). Enabled vocab packs are concatenated in priority order and passed as --prompt. Auto mode can run a -dl preflight for short-Arabic clips, or split on silence for phrase-level code-switch.</div>
     </div>
     <div class="how-step">
       <span class="how-num">03 · INSERT</span>
       <div class="how-title">الإدراج الذكي</div>
-      <div class="how-desc">Cleanup engine polishes the text. InsertionService picks the best transport for your frontmost app and types directly.</div>
+      <div class="how-desc">Bilingual cleanup splits and normalizes Arabic + English chunks separately. Your personal lexicon (built up by correcting past transcripts) is applied. InsertionService picks CGEvent / Accessibility / clipboard-paste based on the target app's bundle ID.</div>
     </div>
   </div>
 
